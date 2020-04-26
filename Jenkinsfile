@@ -1,25 +1,25 @@
-node(){
-
-		def repoURL='https://github.com/gabrielstar/cucumber.git'
-
-		stage("Prepare Workspace"){
-			cleanWs()
-			env.WORKSPACE_LOCAL=sh(returnStdout:true,script:'pwd').trim()
-			echo"Workspace set to:"+env.WORKSPACE_LOCAL
-		}
-		stage('Checkout Self'){
-		git branch:'master',credentialsId:'',url:repoURL
-		}
-		stage('Cucumber Tests'){
-			withMaven(maven:'maven35'){
-				sh """
-					cd ${env.WORKSPACE_LOCAL}
-					mvn clean test
-				"""
-			}
-		}
-		stage('Expose report'){
-			archive "**/cucumber.json"
-			cucumber '**/cucumber.json'
-		}
+node {
+   def mvnHome
+   stage('Preparation') { // for display purposes
+      // Get some code from a GitHub repository
+      git 'https://github.com/bewithvk/X-Ray.git'
+      // Get the Maven tool.
+      // ** NOTE: This 'M3' Maven tool must be configured
+      // **       in the global configuration.           
+      mvnHome = tool 'M3'
+   }
+   stage('Build') {
+      // Run the maven build
+      withEnv(["MVN_HOME=$mvnHome"]) {
+         if (isUnix()) {
+            sh '"$MVN_HOME/bin/mvn" -Dmaven.test.failure.ignore clean package'
+         } else {
+            bat(/"%MVN_HOME%\bin\mvn" -Dmaven.test.failure.ignore clean package/)
+         }
+      }
+   }
+   stage('Results') {
+      junit '**/target/surefire-reports/TEST-*.xml'
+      archiveArtifacts 'target/*.jar'
+   }
 }
